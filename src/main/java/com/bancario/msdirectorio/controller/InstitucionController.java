@@ -72,4 +72,14 @@ public class InstitucionController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @Operation(summary = "INTERNAL: Reportar fallo de conexión con un banco (Usado por el Switch)")
+    @PostMapping("/instituciones/{bic}/reportar-fallo")
+    public ResponseEntity<Void> reportarFallo(@PathVariable String bic) {
+        // Aquí llamaríamos a la lógica de aumentar contador en el servicio
+        // Por ahora lo dejamos preparado para cuando integremos el Switch
+        // directorioService.registrarFallo(bic); <--- Esto lo descomentamos luego
+        return ResponseEntity.ok().build();
+    }
+
 }
