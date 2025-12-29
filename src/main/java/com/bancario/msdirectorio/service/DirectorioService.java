@@ -38,15 +38,16 @@ public class DirectorioService {
         // 1. Guardamos la Institución
         Institucion guardada = institucionRepository.save(institucion);
 
-        // 2. IMPORTANTE: Inicializamos su Interruptor de Circuito (Estado Sano)
-        InterruptorCircuito interruptor = new InterruptorCircuito(guardada.getCodigoBic());
+        // CORRECCIÓN: Usamos el constructor vacío. El ID es null, así que Hibernate hará INSERT.
+        InterruptorCircuito interruptor = new InterruptorCircuito();
+        // Gracias a @MapsId en la entidad, al setear la institución, JPA copiará el ID automáticamente.
         interruptor.setInstitucion(guardada);
+
         interruptor.setFallosConsecutivos(0);
         interruptor.setEstaAbierto(false);
         interruptor.setUltimoFallo(null);
 
-        interruptorRepository.save(interruptor); // Guardamos en la tabla 'InterruptorCircuito'
-
+        interruptorRepository.save(interruptor);
         return guardada;
     }
 

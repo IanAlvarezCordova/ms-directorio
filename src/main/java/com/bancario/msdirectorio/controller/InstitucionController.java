@@ -27,12 +27,14 @@ public class InstitucionController {
 
     @Operation(summary = "Registrar un nuevo Banco Participante")
     @PostMapping("/instituciones")
-    public ResponseEntity<Institucion> crearInstitucion(@RequestBody Institucion institucion) {
+    public ResponseEntity<?> crearInstitucion(@RequestBody Institucion institucion) { // Nota el <?>
         try {
             Institucion nueva = directorioService.registrarInstitucion(institucion);
-            return new ResponseEntity<>(nueva, HttpStatus.CREATED); // 201 Created
+            return new ResponseEntity<>(nueva, HttpStatus.CREATED);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build(); // 400 Bad Request
+            e.printStackTrace(); // Esto imprimirá el error en la consola de Docker
+            // Esto enviará el texto del error a tu Postman/IntelliJ
+            return ResponseEntity.badRequest().body("ERROR: " + e.getMessage());
         }
     }
 
