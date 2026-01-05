@@ -56,16 +56,16 @@ public class DirectorioService {
     }
 
     public Optional<Institucion> buscarPorBic(String bic) {
-        // 1. Validamos primero si el banco está "castigado" (Circuit Breaker)
-        if (!validarDisponibilidad(bic)) {
-            // Opción Arquitectónica: Devolver vacío para simular "Caída de servicio"
-            // Esto hará que el Controller devuelva 404 Not Found
-            System.out.println(">>> CIRCUIT BREAKER ACTIVADO: Bloqueando acceso a " + bic);
-            return Optional.empty(); 
+        try {
+            if (!validarDisponibilidad(bic)) {
+                System.out.println(">>> ⛔ CIRCUIT BREAKER ACTIVADO PARA: " + bic);
+                return Optional.empty();
+            }
+            return institucionRepository.findById(bic);
+        } catch (Exception e) {
+            e.printStackTrace(); // Para ver el error real en logs si vuelve a pasar
+            return Optional.empty(); // Fallo seguro: si explota, decimos que no existe
         }
-
-        // 2. Si está sano, lo buscamos
-        return institucionRepository.findById(bic);
     }
 
     
@@ -102,19 +102,25 @@ public class DirectorioService {
     // --- MÉTODOS PRIVADOS DEL CIRCUIT BREAKER ---
 
     private boolean validarDisponibilidad(String bic) {
-        InterruptorCircuito interruptor = interruptorRepository.findById(bic).orElse(null);
-        if (interruptor == null) return true; // Si no hay registro, asumimos que está bien
-
-        if (interruptor.getEstaAbierto()) {
-            // Si está abierto, verificamos si ya pasó el tiempo de castigo (ej. 60 seg)
-            if (interruptor.getUltimoFallo() != null) {
-                long segundos = ChronoUnit.SECONDS.between(interruptor.getUltimoFallo(), LocalDateTime.now());
-                if (segundos > 60) {
-                    return true; // Half-Open: Permitimos probar de nuevo
+        // Usamos findById para evitar NullPointerException si no existe
+        return interruptorRepository.findById(bic)
+            .map(interruptor -> {
+                // Si NO está abierto (false), entonces está disponible (true)
+                if (!Boolean.TRUE.equals(interruptor.getEstaAbierto())) {
+                    return true;
                 }
-            }
-            return false; 
-        }
-        return true; 
+
+                // Si está abierto (true), verificamos el tiempo de castigo
+                if (interruptor.getUltimoFallo() != null) {
+                    long segundos = ChronoUnit.SECONDS.between(interruptor.getUltimoFallo(), LocalDateTime.now());
+                    // Si pasaron más de 60 segundos, permitimos probar (Half-Open)
+                    if (segundos > 60) {
+                        return true; 
+                    }
+                }
+                // Si llegamos aquí, sigue bloqueado
+                return false;
+            })
+            .orElse(true); // Si no hay registro del interruptor, asumimos que está disponible (true)
     }
 }
