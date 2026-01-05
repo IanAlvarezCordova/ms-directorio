@@ -5,10 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name = "Institucion")
 @Getter
 @Setter
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
 public class Institucion {
 
     @Id
