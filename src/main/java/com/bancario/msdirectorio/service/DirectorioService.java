@@ -38,9 +38,9 @@ public class DirectorioService {
         // 1. Guardamos la Institución
         Institucion guardada = institucionRepository.save(institucion);
 
-        // CORRECCIÓN: Usamos el constructor vacío. El ID es null, así que Hibernate hará INSERT.
+        
         InterruptorCircuito interruptor = new InterruptorCircuito();
-        // Gracias a @MapsId en la entidad, al setear la institución, JPA copiará el ID automáticamente.
+        
         interruptor.setInstitucion(guardada);
 
         interruptor.setFallosConsecutivos(0);
@@ -56,10 +56,19 @@ public class DirectorioService {
     }
 
     public Optional<Institucion> buscarPorBic(String bic) {
+        // 1. Validamos primero si el banco está "castigado" (Circuit Breaker)
+        if (!validarDisponibilidad(bic)) {
+            // Opción Arquitectónica: Devolver vacío para simular "Caída de servicio"
+            // Esto hará que el Controller devuelva 404 Not Found
+            System.out.println(">>> CIRCUIT BREAKER ACTIVADO: Bloqueando acceso a " + bic);
+            return Optional.empty(); 
+        }
+
+        // 2. Si está sano, lo buscamos
         return institucionRepository.findById(bic);
     }
 
-    // --- Lógica para Reglas de Enrutamiento ---
+    
 
     @Transactional
     public ReglaEnrutamiento registrarRegla(ReglaEnrutamiento regla) {
@@ -71,7 +80,7 @@ public class DirectorioService {
         return reglaRepository.save(regla);
     }
 
-    // --- Lógica CORE para el Switch (LOOKUP + PROTECCIÓN) ---
+    
 
     public Optional<Institucion> descubrirBancoPorBin(String bin) {
         Optional<ReglaEnrutamiento> regla = reglaRepository.findByPrefijoBin(bin);
@@ -81,8 +90,7 @@ public class DirectorioService {
 
             // VALIDACIÓN DE SEGURIDAD: ¿El banco está bloqueado por el Circuit Breaker?
             if (!validarDisponibilidad(banco.getCodigoBic())) {
-                // Opción A: Devolver vacío para simular que "no existe" temporalmente
-                // Opción B: Lanzar excepción. Por ahora, devolvemos empty para proteger el sistema.
+                // Lanzar excepción. Por ahora, devolvemos empty para proteger el sistema.
                 System.out.println("ADVERTENCIA: Intento de ruta hacia " + banco.getCodigoBic() + " bloqueado por Circuit Breaker.");
                 return Optional.empty();
             }
@@ -105,8 +113,8 @@ public class DirectorioService {
                     return true; // Half-Open: Permitimos probar de nuevo
                 }
             }
-            return false; // Sigue bloqueado
+            return false; 
         }
-        return true; // Está cerrado (Sano)
+        return true; 
     }
 }
